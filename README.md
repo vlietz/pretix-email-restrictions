@@ -44,8 +44,8 @@ git clone https://github.com/vlietz/pretix-email-restrictions.git /opt/pretix-em
 # 3. Copy the source into the running pretix container
 docker compose cp /opt/pretix-email-restrictions pretix:/tmp/plugin
 
-# 4. Build and install inside the container
-docker compose exec pretix pip3 install /tmp/plugin
+# 4. Build and install inside the container (run as root so pip can write build files)
+docker compose exec --user root pretix pip3 install /tmp/plugin
 
 # 5. Restart pretix to pick up the new package
 docker compose restart pretix
@@ -59,7 +59,7 @@ cd /opt/pretix-email-restrictions && git pull
 
 # Copy updated source into the container and reinstall
 docker compose cp /opt/pretix-email-restrictions pretix:/tmp/plugin
-docker compose exec pretix pip3 install --upgrade /tmp/plugin
+docker compose exec --user root pretix pip3 install --upgrade /tmp/plugin
 docker compose restart pretix
 ```
 
