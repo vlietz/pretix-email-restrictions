@@ -50,14 +50,14 @@ class TestEventSettingsView:
             url,
             {
                 "email_restriction-email_restriction_max_per_email": "4",
-                "email_restriction-email_restriction_max_per_order": "2",
+                "email_restriction-email_restriction_max_per_attendee_email": "2",
                 "email_restriction-email_restriction_error_message": "Too many tickets!",
             },
         )
         assert response.status_code in (200, 302)
         e = fresh_event(event)
         assert e.settings.get("email_restriction_max_per_email", as_type=int) == 4
-        assert e.settings.get("email_restriction_max_per_order", as_type=int) == 2
+        assert e.settings.get("email_restriction_max_per_attendee_email", as_type=int) == 2
         assert e.settings.get("email_restriction_error_message") == "Too many tickets!"
 
     def test_post_blocked_when_override_disallowed(self, client, event):
@@ -73,15 +73,18 @@ class TestEventSettingsView:
 
     def test_clear_settings_by_empty_post(self, client, event):
         event.settings.set("email_restriction_max_per_email", 5)
+        event.settings.set("email_restriction_max_per_attendee_email", 2)
         url = self._url(event)
         client.post(
             url,
             {
                 "email_restriction-email_restriction_max_per_email": "",
-                "email_restriction-email_restriction_max_per_order": "",
+                "email_restriction-email_restriction_max_per_attendee_email": "",
             },
         )
-        assert fresh_event(event).settings.get("email_restriction_max_per_email", as_type=int) is None
+        e = fresh_event(event)
+        assert e.settings.get("email_restriction_max_per_email", as_type=int) is None
+        assert e.settings.get("email_restriction_max_per_attendee_email", as_type=int) is None
 
 
 # ---------------------------------------------------------------------------
@@ -107,7 +110,7 @@ class TestOrganizerSettingsView:
             url,
             {
                 "email_restriction-email_restriction_max_per_email": "5",
-                "email_restriction-email_restriction_max_per_order": "3",
+                "email_restriction-email_restriction_max_per_attendee_email": "3",
                 "email_restriction-email_restriction_allow_event_override": "on",
                 "email_restriction-email_restriction_error_message": "Org limit reached",
             },
@@ -115,6 +118,6 @@ class TestOrganizerSettingsView:
         assert response.status_code in (200, 302)
         o = fresh_organizer(organizer)
         assert o.settings.get("email_restriction_max_per_email", as_type=int) == 5
-        assert o.settings.get("email_restriction_max_per_order", as_type=int) == 3
+        assert o.settings.get("email_restriction_max_per_attendee_email", as_type=int) == 3
         assert o.settings.get("email_restriction_allow_event_override", as_type=bool) is True
         assert o.settings.get("email_restriction_error_message") == "Org limit reached"

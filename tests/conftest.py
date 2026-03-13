@@ -93,8 +93,11 @@ def admin_team(organizer, admin_user):
 # ---------------------------------------------------------------------------
 
 
-def make_order(event, email, item, n_positions=1, status=Order.STATUS_PAID):
-    """Create an order with *n_positions* positions."""
+def make_order(event, email, item, n_positions=1, status=Order.STATUS_PAID, attendee_email=None):
+    """Create an order with *n_positions* positions.
+
+    Pass ``attendee_email`` to set the same attendee email on every position.
+    """
     with scopes_disabled():
         sales_channel = SalesChannel.objects.get(organizer=event.organizer, identifier="web")
         order = Order.objects.create(
@@ -113,6 +116,7 @@ def make_order(event, email, item, n_positions=1, status=Order.STATUS_PAID):
                 order=order,
                 item=item,
                 price=item.default_price,
+                attendee_email=attendee_email,
             )
     return order
 
