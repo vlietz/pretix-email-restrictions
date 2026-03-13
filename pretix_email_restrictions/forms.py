@@ -40,6 +40,14 @@ class OrganizerEmailRestrictionForm(SettingsForm):
             "Leave empty to use the default message."
         ),
     )
+    email_restriction_step_label = forms.CharField(
+        required=False,
+        label=_("Checkout step label"),
+        help_text=_(
+            "Label shown for this step in the checkout progress indicator. "
+            "Leave empty to use the default: \"Contact Information\"."
+        ),
+    )
     email_restriction_back_to_cart_label = forms.CharField(
         required=False,
         label=_("'Back to ticket selection' button label"),
@@ -94,6 +102,14 @@ class EventEmailRestrictionForm(SettingsForm):
         help_text=_(
             "Overrides the organizer default error message for this event. "
             "Leave empty to inherit the organizer setting."
+        ),
+    )
+    email_restriction_step_label = forms.CharField(
+        required=False,
+        label=_("Checkout step label"),
+        help_text=_(
+            "Label shown for this step in the checkout progress indicator. "
+            "Leave empty to inherit the organizer setting or use the default: \"Contact Information\"."
         ),
     )
     email_restriction_back_to_cart_label = forms.CharField(

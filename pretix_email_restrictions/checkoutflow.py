@@ -33,7 +33,8 @@ class EmailRestrictionStep(CartMixin, TemplateFlowStep):
 
     @property
     def label(self):
-        return _("Email restriction check")
+        val = get_effective_setting(self.event, "email_restriction_step_label")
+        return val if val else str(_("Contact Information"))
 
     # ------------------------------------------------------------------
     # Helpers
