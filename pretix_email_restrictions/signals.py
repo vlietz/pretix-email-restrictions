@@ -86,20 +86,26 @@ def validate_order_on_placement(sender, order, **kwargs):
     """
     event = sender
 
-    has_per_email = get_effective_setting(event, "email_restriction_max_per_email", as_type=int)
-    has_per_order = get_effective_setting(event, "email_restriction_max_per_order", as_type=int)
-
-    if not has_per_email and not has_per_order:
+    has_order_limit = get_effective_setting(event, "email_restriction_max_per_email", as_type=int)
+    has_attendee_limit = get_effective_setting(
+        event, "email_restriction_max_per_attendee_email", as_type=int
+    )
+    if not has_order_limit and not has_attendee_limit:
         return
 
-    # Count only positions that belong to this new order for the per-order check.
-    # For the per-email check we exclude the new order itself to avoid
-    # double-counting (the order is already persisted when this signal fires).
+    # Exclude the new order itself to avoid double-counting
+    # (the order is already persisted when this signal fires).
     with scopes_disabled():
-        cart_count = order.positions.count()
-    email = order.email or ""
+        positions = list(order.positions.all())
+    order_email = order.email or ""
+    attendee_emails = [p.attendee_email for p in positions if p.attendee_email]
 
     try:
-        validate_restrictions(event, email, cart_count, exclude_order=order)
+        validate_restrictions(
+            event,
+            order_email,
+            exclude_order=order,
+            attendee_emails=attendee_emails,
+        )
     except RestrictionViolated as exc:
         raise OrderError(str(exc)) from exc

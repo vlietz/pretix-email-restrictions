@@ -35,8 +35,8 @@ class EventEmailRestrictionSettingsView(EventPermissionRequiredMixin, View):
             "effective_max_per_email": get_effective_setting(
                 request.event, "email_restriction_max_per_email", as_type=int
             ),
-            "effective_max_per_order": get_effective_setting(
-                request.event, "email_restriction_max_per_order", as_type=int
+            "effective_max_per_attendee_email": get_effective_setting(
+                request.event, "email_restriction_max_per_attendee_email", as_type=int
             ),
         }
         return render(request, "pretixcontrol/email_restrictions/event_settings.html", ctx)
@@ -78,8 +78,8 @@ class EventEmailRestrictionSettingsView(EventPermissionRequiredMixin, View):
             "effective_max_per_email": get_effective_setting(
                 request.event, "email_restriction_max_per_email", as_type=int
             ),
-            "effective_max_per_order": get_effective_setting(
-                request.event, "email_restriction_max_per_order", as_type=int
+            "effective_max_per_attendee_email": get_effective_setting(
+                request.event, "email_restriction_max_per_attendee_email", as_type=int
             ),
         }
         return render(request, "pretixcontrol/email_restrictions/event_settings.html", ctx)

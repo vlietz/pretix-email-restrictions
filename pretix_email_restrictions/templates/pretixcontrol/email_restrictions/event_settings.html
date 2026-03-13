@@ -14,23 +14,22 @@
         and inherited from the organizer settings.
     {% endblocktrans %}
     {% if effective_max_per_email %}
-        <br>{% blocktrans with n=effective_max_per_email %}Effective limit: {{ n }} tickets per email.{% endblocktrans %}
+        <br>{% blocktrans with n=effective_max_per_email %}Effective order email limit: {{ n }} tickets per order email.{% endblocktrans %}
     {% endif %}
-    {% if effective_max_per_order %}
-        <br>{% blocktrans with n=effective_max_per_order %}Effective limit: {{ n }} tickets per order.{% endblocktrans %}
+    {% if effective_max_per_attendee_email %}
+        <br>{% blocktrans with n=effective_max_per_attendee_email %}Effective attendee email limit: {{ n }} tickets per attendee email.{% endblocktrans %}
     {% endif %}
 </div>
 {% else %}
 
-{% if effective_max_per_email or effective_max_per_order %}
+{% if effective_max_per_email or effective_max_per_attendee_email %}
 <div class="alert alert-info">
     <span class="fa fa-info-circle"></span>
-    {% trans "Currently effective limits (event overrides organizer defaults when set):" %}
     {% if effective_max_per_email %}
-        <br>{% blocktrans with n=effective_max_per_email %}{{ n }} tickets per email address.{% endblocktrans %}
+        {% blocktrans with n=effective_max_per_email %}Order email limit: {{ n }} tickets per order email address.{% endblocktrans %}
     {% endif %}
-    {% if effective_max_per_order %}
-        <br>{% blocktrans with n=effective_max_per_order %}{{ n }} tickets per order.{% endblocktrans %}
+    {% if effective_max_per_attendee_email %}
+        {% blocktrans with n=effective_max_per_attendee_email %}Attendee email limit: {{ n }} tickets per attendee email address.{% endblocktrans %}
     {% endif %}
 </div>
 {% endif %}
@@ -39,7 +38,7 @@
     {% csrf_token %}
 
     <fieldset>
-        <legend>{% trans "Limits" %}</legend>
+        <legend>{% trans "Settings" %}</legend>
         {% for field in form %}
         <div class="form-group{% if field.errors %} has-error{% endif %}">
             <label class="col-md-3 control-label" for="{{ field.id_for_label }}">

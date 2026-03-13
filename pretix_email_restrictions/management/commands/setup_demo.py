@@ -20,8 +20,8 @@ What it creates
   - Quota:           100 tickets
   - Live:            yes (shop is open)
 - Email restrictions configured on the event:
-  - Max tickets per email:  2
-  - Max tickets per order:  3
+  - Max tickets per order email:    2
+  - Max tickets per attendee email: 2
   - Custom error message set
 
 The command is idempotent — running it twice is safe.
@@ -55,24 +55,26 @@ class Command(BaseCommand):
             SalesChannel,
             Team,
             User,
+            Voucher,
         )
 
         with scopes_disabled():
             self._run(
-                User, Organizer, SalesChannel, Team, Event, Item, Quota
+                User, Organizer, SalesChannel, Team, Event, Item, Quota, Voucher
             )
 
-    def _run(self, User, Organizer, SalesChannel, Team, Event, Item, Quota):
+    def _run(self, User, Organizer, SalesChannel, Team, Event, Item, Quota, Voucher):
         # ------------------------------------------------------------------
         # Superuser
         # ------------------------------------------------------------------
-        user, created = User.objects.get_or_create(
-            email=ADMIN_EMAIL,
-            defaults={"is_staff": True, "is_superuser": True},
-        )
+        try:
+            user = User.objects.get(email=ADMIN_EMAIL)
+            created = False
+        except User.DoesNotExist:
+            user = User.objects.create_superuser(ADMIN_EMAIL, ADMIN_PASSWORD)
+            created = True
+
         if created:
-            user.set_password(ADMIN_PASSWORD)
-            user.save()
             self.stdout.write(f"  Created superuser {ADMIN_EMAIL}")
         else:
             self.stdout.write(f"  Superuser {ADMIN_EMAIL} already exists")
@@ -88,6 +90,14 @@ class Command(BaseCommand):
             self.stdout.write(f"  Created organizer '{organizer.name}'")
         else:
             self.stdout.write(f"  Organizer '{organizer.name}' already exists")
+
+        # banktransfer is a hybrid event+organizer plugin and must be enabled
+        # at the organizer level as well, otherwise the payment provider signal
+        # is filtered out and the payment step shows "no providers enabled".
+        org_plugins = set(p for p in organizer.plugins.split(",") if p)
+        org_plugins.add("pretix.plugins.banktransfer")
+        organizer.plugins = ",".join(sorted(org_plugins))
+        organizer.save()
 
         # ------------------------------------------------------------------
         # Web sales channel (required for orders in pretix 2026.x)
@@ -150,8 +160,12 @@ class Command(BaseCommand):
         item, _ = Item.objects.get_or_create(
             event=event,
             name="Standard Ticket",
-            defaults={"default_price": Decimal("10.00")},
+            defaults={"default_price": Decimal("10.00"), "admission": True},
         )
+        # Ensure admission is set even on existing items
+        if not item.admission:
+            item.admission = True
+            item.save()
 
         quota, _ = Quota.objects.get_or_create(
             event=event,
@@ -164,13 +178,46 @@ class Command(BaseCommand):
         # Email restriction settings on the event
         # ------------------------------------------------------------------
         event.settings.set("email_restriction_max_per_email", 2)
-        event.settings.set("email_restriction_max_per_order", 3)
+        event.settings.set("email_restriction_max_per_attendee_email", 2)
         event.settings.set(
             "email_restriction_error_message",
             "Sorry, a maximum of 2 tickets per email address is allowed for this event.",
         )
         # Allow event-level overrides at organizer level (default)
         organizer.settings.set("email_restriction_allow_event_override", True)
+
+        # Ask for (and require) individual attendee details per ticket:
+        # first name + last name + email address (mirrors typical prod setup).
+        event.settings.set("attendee_names_asked", True)
+        event.settings.set("attendee_names_required", True)
+        event.settings.set("name_scheme", "given_family")  # separate first / last fields
+        event.settings.set("attendee_emails_asked", True)
+        event.settings.set("attendee_emails_required", True)
+
+        # ------------------------------------------------------------------
+        # Payment providers
+        # ------------------------------------------------------------------
+        # Enable bank transfer (for paid orders) and the free-order provider
+        # (for €0 orders, e.g. when a 100 % voucher is applied).
+        event.settings.set("payment_banktransfer__enabled", True)
+        event.settings.set("payment_free__enabled", True)
+
+        # ------------------------------------------------------------------
+        # Free vouchers for testing (price_mode=set, value=0)
+        # ------------------------------------------------------------------
+        for code in ("FREE1", "FREE2", "FREE3", "FREE4", "FREE5"):
+            Voucher.objects.get_or_create(
+                event=event,
+                code=code,
+                defaults={
+                    "max_usages": 1,
+                    "redeemed": 0,
+                    "price_mode": "set",
+                    "value": Decimal("0.00"),
+                    "item": item,
+                },
+            )
+        self.stdout.write("  Created/verified free vouchers: FREE1 … FREE5")
 
         # ------------------------------------------------------------------
         # Summary
@@ -190,12 +237,17 @@ class Command(BaseCommand):
         self.stdout.write(f"    URL:       {base}/{ORGANIZER_SLUG}/{EVENT_SLUG}/")
         self.stdout.write("")
         self.stdout.write("  Email restriction settings")
-        self.stdout.write("    Max tickets per email:  2")
-        self.stdout.write("    Max tickets per order:  3")
+        self.stdout.write("    Max tickets per order email:    2")
+        self.stdout.write("    Max tickets per attendee email: 2")
+        self.stdout.write("")
+        self.stdout.write("  Free vouchers (set price to €0, single-use each)")
+        self.stdout.write("    FREE1  FREE2  FREE3  FREE4  FREE5")
+        self.stdout.write("    Use one per checkout at the voucher/discount step.")
         self.stdout.write("")
         self.stdout.write("  Test scenarios")
-        self.stdout.write("    1. Add 1 ticket → check out → should succeed")
-        self.stdout.write("    2. Add 2 tickets, same email → should be blocked")
-        self.stdout.write("    3. Add 4 tickets in one order → blocked by per-order limit")
-        self.stdout.write("    4. Change limits:  Settings → Email Restrictions")
+        self.stdout.write("    1. Add 1 ticket + voucher FREE1 → check out → should succeed")
+        self.stdout.write("    2. Add 1 ticket + voucher FREE2, same email → should succeed (total = 2 = limit)")
+        self.stdout.write("    3. Add 1 ticket + voucher FREE3, same email → should be blocked (total = 3 > 2)")
+        self.stdout.write("    4. Click 'Change email address' → enter different email → should succeed")
+        self.stdout.write("    5. Change limit:  Settings → Email Restrictions")
         self.stdout.write("")

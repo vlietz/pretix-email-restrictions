@@ -13,20 +13,22 @@ class OrganizerEmailRestrictionForm(SettingsForm):
     email_restriction_max_per_email = forms.IntegerField(
         min_value=1,
         required=False,
-        label=_("Maximum tickets per email address"),
+        label=_("Maximum orders per order email"),
         help_text=_(
-            "The maximum total number of tickets that one email address may hold "
-            "for a single event (counting all pending and paid orders). "
+            "How many orders a single email address may place for this event "
+            "(counting pending and paid orders). The number of tickets per order "
+            "does not matter — a fresh email always passes. "
             "Leave empty to disable this limit."
         ),
     )
-    email_restriction_max_per_order = forms.IntegerField(
+    email_restriction_max_per_attendee_email = forms.IntegerField(
         min_value=1,
         required=False,
-        label=_("Maximum tickets per order"),
+        label=_("Maximum tickets per attendee email"),
         help_text=_(
-            "The maximum number of tickets that may be placed in a single order. "
-            "Leave empty to disable this limit."
+            "The maximum number of tickets a single email address may appear on "
+            "as the attendee email, across all orders for this event (including "
+            "multiple tickets within the same order). Leave empty to disable this limit."
         ),
     )
     email_restriction_error_message = forms.CharField(
@@ -37,6 +39,16 @@ class OrganizerEmailRestrictionForm(SettingsForm):
             "Message shown to the customer when a limit is exceeded. "
             "Leave empty to use the default message."
         ),
+    )
+    email_restriction_back_to_cart_label = forms.CharField(
+        required=False,
+        label=_("'Back to ticket selection' button label"),
+        help_text=_("Leave empty to use the default label."),
+    )
+    email_restriction_change_email_label = forms.CharField(
+        required=False,
+        label=_("'Change email address' button label"),
+        help_text=_("Leave empty to use the default label."),
     )
     email_restriction_allow_event_override = forms.BooleanField(
         required=False,
@@ -57,18 +69,21 @@ class EventEmailRestrictionForm(SettingsForm):
     email_restriction_max_per_email = forms.IntegerField(
         min_value=1,
         required=False,
-        label=_("Maximum tickets per email address"),
+        label=_("Maximum orders per order email"),
         help_text=_(
             "Overrides the organizer default for this event. "
+            "How many orders a single email address may place. "
             "Leave empty to inherit the organizer setting."
         ),
     )
-    email_restriction_max_per_order = forms.IntegerField(
+    email_restriction_max_per_attendee_email = forms.IntegerField(
         min_value=1,
         required=False,
-        label=_("Maximum tickets per order"),
+        label=_("Maximum tickets per attendee email"),
         help_text=_(
             "Overrides the organizer default for this event. "
+            "The maximum number of tickets a single email address may appear on as the "
+            "attendee email (across all orders, including within the same order). "
             "Leave empty to inherit the organizer setting."
         ),
     )
@@ -80,4 +95,14 @@ class EventEmailRestrictionForm(SettingsForm):
             "Overrides the organizer default error message for this event. "
             "Leave empty to inherit the organizer setting."
         ),
+    )
+    email_restriction_back_to_cart_label = forms.CharField(
+        required=False,
+        label=_("'Back to ticket selection' button label"),
+        help_text=_("Leave empty to inherit the organizer setting or use the default."),
+    )
+    email_restriction_change_email_label = forms.CharField(
+        required=False,
+        label=_("'Change email address' button label"),
+        help_text=_("Leave empty to inherit the organizer setting or use the default."),
     )
