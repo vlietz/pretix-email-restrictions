@@ -57,9 +57,12 @@ docker compose restart pretix
 # Pull the latest source on the server
 cd /opt/pretix-email-restrictions && git pull
 
+# Remove the old copy inside the container first (otherwise cp copies into a subdirectory)
+docker compose exec --user root pretix rm -rf /tmp/plugin
+
 # Copy updated source into the container and reinstall
 docker compose cp /opt/pretix-email-restrictions pretix:/tmp/plugin
-docker compose exec --user root pretix pip3 install --upgrade /tmp/plugin
+docker compose exec --user root pretix pip3 install --upgrade --no-cache-dir /tmp/plugin
 docker compose restart pretix
 ```
 
