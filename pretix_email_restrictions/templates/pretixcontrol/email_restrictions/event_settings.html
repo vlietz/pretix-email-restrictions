@@ -1,0 +1,68 @@
+{% extends "pretixcontrol/event/settings_base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Email Restrictions" %}{% endblock %}
+
+{% block inside %}
+<h1>{% trans "Email Restrictions" %}</h1>
+
+{% if not allow_override %}
+<div class="alert alert-warning">
+    <span class="fa fa-warning"></span>
+    {% blocktrans trimmed %}
+        The organizer has disabled event-level overrides. The values below are read-only
+        and inherited from the organizer settings.
+    {% endblocktrans %}
+    {% if effective_max_per_email %}
+        <br>{% blocktrans with n=effective_max_per_email %}Effective limit: {{ n }} tickets per email.{% endblocktrans %}
+    {% endif %}
+    {% if effective_max_per_order %}
+        <br>{% blocktrans with n=effective_max_per_order %}Effective limit: {{ n }} tickets per order.{% endblocktrans %}
+    {% endif %}
+</div>
+{% else %}
+
+{% if effective_max_per_email or effective_max_per_order %}
+<div class="alert alert-info">
+    <span class="fa fa-info-circle"></span>
+    {% trans "Currently effective limits (event overrides organizer defaults when set):" %}
+    {% if effective_max_per_email %}
+        <br>{% blocktrans with n=effective_max_per_email %}{{ n }} tickets per email address.{% endblocktrans %}
+    {% endif %}
+    {% if effective_max_per_order %}
+        <br>{% blocktrans with n=effective_max_per_order %}{{ n }} tickets per order.{% endblocktrans %}
+    {% endif %}
+</div>
+{% endif %}
+
+<form action="" method="post" class="form-horizontal">
+    {% csrf_token %}
+
+    <fieldset>
+        <legend>{% trans "Limits" %}</legend>
+        {% for field in form %}
+        <div class="form-group{% if field.errors %} has-error{% endif %}">
+            <label class="col-md-3 control-label" for="{{ field.id_for_label }}">
+                {{ field.label }}
+            </label>
+            <div class="col-md-9">
+                {{ field }}
+                {% if field.help_text %}
+                <p class="help-block">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                <p class="help-block text-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </fieldset>
+
+    <div class="form-group submit-group">
+        <button type="submit" class="btn btn-primary btn-save">
+            {% trans "Save" %}
+        </button>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

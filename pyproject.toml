@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pretix-email-restrictions"
+version = "1.0.0"
+description = "Pretix plugin to limit the number of tickets per email address per event"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.11"
+dependencies = []
+
+[project.entry-points."pretix.plugin"]
+pretix_email_restrictions = "pretix_email_restrictions"
+
+[tool.setuptools.packages.find]
+include = ["pretix_email_restrictions*"]
+
+[tool.setuptools.package-data]
+pretix_email_restrictions = [
+    "templates/**/*.html",
+    "locale/**/*.po",
+    "locale/**/*.mo",
+    "static/**/*",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+addopts = "-v --tb=short"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

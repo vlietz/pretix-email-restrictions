@@ -1,0 +1,50 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pretix
+      POSTGRES_USER: pretix
+      POSTGRES_PASSWORD: pretix
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pretix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pretix:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8345:80"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      # Mount the entire plugin source so code changes are reflected without
+      # rebuilding the image (the package is installed in editable mode).
+      - .:/pretix-email-restrictions
+      # pretix config
+      - ./docker/pretix.cfg:/etc/pretix/pretix.cfg:ro
+      # Persistent data (uploads, etc.)
+      - pretix_data:/data
+    environment:
+      PRETIX_IGNORE_CONFLICTS: "1"
+
+volumes:
+  postgres_data:
+  pretix_data:

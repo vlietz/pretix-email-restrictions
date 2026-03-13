@@ -1,0 +1,44 @@
+{% extends "pretixcontrol/organizers/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Email Restrictions" %}{% endblock %}
+
+{% block inside %}
+<h1>{% trans "Email Restrictions" %}</h1>
+<p class="text-muted">
+    {% blocktrans trimmed %}
+        These are the default limits applied to all events of this organizer.
+        Individual events can override them unless you disable overrides below.
+    {% endblocktrans %}
+</p>
+
+<form action="" method="post" class="form-horizontal">
+    {% csrf_token %}
+
+    <fieldset>
+        <legend>{% trans "Default limits" %}</legend>
+        {% for field in form %}
+        <div class="form-group{% if field.errors %} has-error{% endif %}">
+            <label class="col-md-3 control-label" for="{{ field.id_for_label }}">
+                {{ field.label }}
+            </label>
+            <div class="col-md-9">
+                {{ field }}
+                {% if field.help_text %}
+                <p class="help-block">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                <p class="help-block text-danger">{{ error }}</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </fieldset>
+
+    <div class="form-group submit-group">
+        <button type="submit" class="btn btn-primary btn-save">
+            {% trans "Save" %}
+        </button>
+    </div>
+</form>
+{% endblock %}
