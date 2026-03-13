@@ -30,18 +30,35 @@ The plugin is installed into the same Python environment that runs pretix.
 pip install git+https://github.com/vlietz/pretix-email-restrictions.git
 ```
 
-**Or build and install a wheel locally:**
+**Or build and install a wheel inside the container (recommended when host and server architectures differ):**
+
+Copy the source to the server, then let the container build and install the wheel in its own environment:
 
 ```bash
-# On your development machine
-git clone https://github.com/vlietz/pretix-email-restrictions.git
-cd pretix-email-restrictions
-pip install build
-python -m build
-# → creates dist/pretix_email_restrictions-*.whl
+# 1. Copy the plugin source to your server
+scp -r pretix-email-restrictions/ yourserver:/tmp/pretix-email-restrictions
 
-# Copy the wheel to your server and install it there
-pip install pretix_email_restrictions-*.whl
+# 2. SSH into your server and install inside the running pretix container
+ssh yourserver
+docker compose exec pretix pip3 install /tmp/pretix-email-restrictions
+
+# 3. Restart pretix to pick up the new package
+docker compose restart pretix
+```
+
+> Building inside the container ensures the wheel is compiled for the correct OS and CPU architecture (important when your development machine runs macOS/ARM and the server runs Linux/x86).
+
+**Updating to a newer version (build inside container):**
+
+```bash
+# Pull latest source on your server
+cd /tmp/pretix-email-restrictions && git pull
+
+# Reinstall inside the container
+docker compose exec pretix pip3 install --upgrade /tmp/pretix-email-restrictions
+
+# Restart
+docker compose restart pretix
 ```
 
 After installing, **restart the pretix web workers** so the new package is picked up:
