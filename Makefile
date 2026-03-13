@@ -18,11 +18,12 @@ up:
 	$(DC) up -d
 	@echo ""
 	@echo "pretix is starting at http://localhost:8345"
-	@echo "Run 'make logs' to follow startup output."
-	@echo ""
-	@echo "First-time setup:"
-	@echo "  make shell"
-	@echo "  pretix createsuperuser"
+	@echo "Run 'make logs' to follow startup, then 'make demo' to seed test data."
+
+demo:
+	@echo "Waiting for pretix to be ready..."
+	$(DC) exec pretix bash -c "until pretix migrate --run-syncdb 2>/dev/null; do sleep 3; done"
+	$(DC) exec pretix pretix setup_demo
 
 down:
 	$(DC) down

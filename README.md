@@ -37,22 +37,25 @@ The repository ships a complete `docker-compose` stack (pretix + PostgreSQL + Re
 # 1. Build the image and start all services
 make up
 
-# 2. Follow the pretix startup logs
+# 2. Follow the startup logs (takes ~60 s on first run)
 make logs
 
-# 3. Once started, open a shell in the pretix container and create a superuser
-make shell
-# Inside the container:
-pretix createsuperuser
+# 3. Seed a complete demo environment (organizer, event, product, limits)
+make demo
 ```
 
-pretix is then available at **http://localhost:8345**.
+`make demo` prints the shop URL, admin credentials, and the test scenarios
+to run once pretix is ready.
 
-After logging in:
+**Admin:** http://localhost:8345/control/ · `admin@example.com` / `admin1234`
+**Shop:** http://localhost:8345/demo/restrict-test/
 
-1. Create an organizer and an event.
-2. Under **Settings → Plugins**, enable **Email Restrictions**.
-3. Configure limits under **Settings → Email Restrictions** for the event, or at the organizer level under the organizer's **Email Restrictions** tab.
+The demo event is pre-configured with:
+- Max **2 tickets per email address**
+- Max **3 tickets per order**
+- A custom error message
+
+`make demo` is idempotent — safe to run again after a restart.
 
 ### Stopping the stack
 
