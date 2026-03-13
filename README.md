@@ -1,112 +1,173 @@
 # pretix-email-restrictions
 
-A [pretix](https://pretix.eu) plugin that limits the number of tickets a single email address can order per event, and the number of tickets per order.
+A [pretix](https://pretix.eu) plugin that limits how often a given email address can be used when ordering tickets for an event.
 
 ## Features
 
-- **Per-email limit** – maximum total tickets one email address may hold across all orders for a single event (pending + paid orders count; cancelled and expired do not).
-- **Per-order limit** – maximum tickets that can be placed in a single checkout.
+- **Per-order-email limit** – how many orders a single email address may place for one event (pending + paid count; cancelled and expired do not).
+- **Per-attendee-email limit** – how many tickets a single email address may appear on as the attendee email, across all orders (including multiple positions in the same order).
 - **Configurable error message** – customize the message shown to the customer.
 - **Organizer → event hierarchy** – set defaults at organizer level; optionally allow individual events to override them.
-- **REST API enforcement** – orders created directly via the pretix REST API are rejected if a limit is exceeded.
-- **Inline checkout error** – the error is shown inside the checkout flow before the payment step, with back-links to fix the cart or change the email address.
+- **REST API enforcement** – orders created via the pretix REST API are rejected if a limit is exceeded.
+- **Inline checkout error** – shown inside the checkout flow before the payment step, with options to fix the cart or change the email address.
 
 ## Requirements
 
 - pretix ≥ 2026.1.0
 - Python ≥ 3.11
 
+---
+
 ## Installation
 
-Install via pip (e.g., into your pretix virtualenv):
+### General (any pretix installation)
+
+The plugin is installed into the same Python environment that runs pretix.
+
+**Install directly from GitHub:**
 
 ```bash
-pip install pretix-email-restrictions
+pip install git+https://github.com/vlietz/pretix-email-restrictions.git
 ```
 
-The plugin is auto-discovered through its `pretix.plugin` entry point.
-Enable it per event in the pretix control panel under **Settings → Plugins**.
+**Or build and install a wheel locally:**
+
+```bash
+# On your development machine
+git clone https://github.com/vlietz/pretix-email-restrictions.git
+cd pretix-email-restrictions
+pip install build
+python -m build
+# → creates dist/pretix_email_restrictions-*.whl
+
+# Copy the wheel to your server and install it there
+pip install pretix_email_restrictions-*.whl
+```
+
+After installing, **restart the pretix web workers** so the new package is picked up:
+
+```bash
+# Typical systemd setup
+systemctl restart pretix-web
+
+# Or supervisord
+supervisorctl restart pretixweb
+```
+
+Then **enable the plugin** per event in the pretix control panel:
+**Settings → Plugins → Email Restrictions → Enable**
+
+**Updating to a newer version:**
+
+```bash
+pip install --upgrade git+https://github.com/vlietz/pretix-email-restrictions.git
+systemctl restart pretix-web
+```
+
+---
+
+### Docker Compose (pretix/standalone image)
+
+If your production pretix runs via Docker Compose using the official `pretix/standalone` image, the recommended approach is to extend that image with the plugin installed inside it.
+
+#### Step 1 — Create a custom Dockerfile
+
+In your pretix deployment directory (where your `docker-compose.yml` lives), create a `Dockerfile`:
+
+```dockerfile
+FROM pretix/standalone:stable
+
+USER root
+RUN pip3 install git+https://github.com/vlietz/pretix-email-restrictions.git
+USER pretixuser
+```
+
+#### Step 2 — Update docker-compose.yml to build the custom image
+
+Replace the `image:` line for the pretix service with a `build:` directive:
+
+```yaml
+services:
+  pretix:
+    build: .          # build from the Dockerfile above
+    # image: pretix/standalone:stable   ← remove or comment out this line
+    restart: unless-stopped
+    # ... rest of your config unchanged
+```
+
+#### Step 3 — Build and restart
+
+```bash
+docker compose build pretix
+docker compose up -d pretix
+```
+
+#### Updating to a newer version
+
+```bash
+docker compose build --no-cache pretix
+docker compose up -d pretix
+```
+
+The `--no-cache` flag forces pip to fetch the latest commit from GitHub.
+
+#### Enable the plugin
+
+Log in to the pretix control panel, go to the event's **Settings → Plugins** and enable **Email Restrictions**.
+
+---
+
+## Configuration
+
+Once the plugin is enabled for an event, go to **Settings → Email Restrictions** to configure it.
+
+| Setting | Description |
+|---|---|
+| **Maximum orders per order email** | How many orders a single email address may place for this event. A fresh email always passes regardless of how many tickets are in the cart. Leave empty to disable. |
+| **Maximum tickets per attendee email** | How many tickets a single email address may appear on as the attendee email, across all orders (including within the same order). Leave empty to disable. |
+| **Error message** | Message shown to the customer when a limit is exceeded. Leave empty to use the built-in default. |
+| **'Back to ticket selection' button label** | Customize the button label on the error page. |
+| **'Change email address' button label** | Customize the button label on the error page. |
+
+The same settings are available at organizer level (**Organizer → Email Restrictions**) as defaults for all events. The organizer can also disable event-level overrides to enforce a single policy across all events.
+
+### Limit hierarchy
+
+1. The organizer sets defaults and can lock them by disabling **Allow individual events to override these defaults**.
+2. When overrides are allowed, an event's own values take precedence.
+3. An event can leave a setting empty to inherit the organizer value.
+
+---
 
 ## Local development with Docker
 
 The repository ships a complete `docker-compose` stack (pretix + PostgreSQL + Redis) with the plugin installed in editable mode so source changes are picked up without rebuilding the image.
 
-### Quick start
-
 ```bash
-# 1. Build the image and start all services
+# Build and start
 make up
 
-# 2. Follow the startup logs (takes ~60 s on first run)
-make logs
-
-# 3. Seed a complete demo environment (organizer, event, product, limits)
+# Seed a demo environment (organizer, event, limits, test vouchers)
 make demo
-```
 
-`make demo` prints the shop URL, admin credentials, and the test scenarios
-to run once pretix is ready.
+# Run tests
+make test
+```
 
 **Admin:** http://localhost:8345/control/ · `admin@example.com` / `admin1234`
 **Shop:** http://localhost:8345/demo/restrict-test/
 
-The demo event is pre-configured with:
-- Max **2 tickets per email address**
-- Max **3 tickets per order**
-- A custom error message
-
-`make demo` is idempotent — safe to run again after a restart.
-
-### Stopping the stack
-
-```bash
-make down
-```
-
-## Running the test suite
-
-Tests use `pytest-django` and run against an in-memory SQLite database — no running Docker stack needed.
-
-```bash
-# Install pretix and test dependencies
-pip install "pretix>=2026.1.0"
-pip install pytest pytest-django pytest-cov ruff
-pip install -e .
-
-# Run all tests
-make test
-
-# Run with coverage
-make test-cov
-```
-
-## Configuration reference
-
-All settings are stored via pretix's built-in settings mechanism (`event.settings` / `organizer.settings`).
-
-| Setting key | Type | Scope | Description |
-|---|---|---|---|
-| `email_restriction_max_per_email` | `int` \| `None` | organizer + event | Maximum tickets one email may hold per event. Empty = disabled. |
-| `email_restriction_max_per_order` | `int` \| `None` | organizer + event | Maximum tickets per single order. Empty = disabled. |
-| `email_restriction_error_message` | `str` | organizer + event | Error message shown when a limit is exceeded. Empty = built-in default. |
-| `email_restriction_allow_event_override` | `bool` | organizer only | Whether events can override the organizer defaults. Default: `True`. |
-
-### Hierarchy
-
-1. The organizer sets defaults and (optionally) locks them by setting `email_restriction_allow_event_override = False`.
-2. When overrides are allowed, an event's own values take precedence over the organizer defaults.
-3. An event can leave a setting empty to inherit the organizer value.
+---
 
 ## Architecture
 
-| Component | Location | Purpose |
-|---|---|---|
-| `restriction.py` | `pretix_email_restrictions/` | Pure validation logic – shared by step and signal |
-| `checkoutflow.py` | `pretix_email_restrictions/` | `EmailRestrictionStep` – blocks checkout in the UI |
-| `signals.py` | `pretix_email_restrictions/` | `order_placed` receiver – blocks API order creation; navigation signals |
-| `forms.py` | `pretix_email_restrictions/` | `SettingsForm` subclasses for event and organizer settings |
-| `views.py` | `pretix_email_restrictions/` | Admin views for both scopes |
-| `urls.py` | `pretix_email_restrictions/` | URL patterns registered under `plugins:pretix_email_restrictions` |
+| Component | Purpose |
+|---|---|
+| `restriction.py` | Core validation logic shared by the checkout step and the order_placed signal |
+| `checkoutflow.py` | `EmailRestrictionStep` — blocks the checkout UI when a limit is exceeded |
+| `signals.py` | `order_placed` receiver — enforces limits for API-created orders |
+| `forms.py` | Settings forms for event and organizer scopes |
+| `views.py` | Admin views for both scopes |
 
 ## License
 
